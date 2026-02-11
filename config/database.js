@@ -19,7 +19,9 @@ const dbConfig = {
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
+    // Forzar IPv4 para evitar problemas con IPv6 en Render
+    family: 4,
 };
 
 /**

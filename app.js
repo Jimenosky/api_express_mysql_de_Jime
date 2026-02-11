@@ -31,9 +31,13 @@ const API_PREFIX = process.env.API_PREFIX || '/api/v1';
  */
 
 // Middleware para CORS (DEBE IR PRIMERO, antes de parsear JSON)
+const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
+    : [];
+
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://tu-dominio.com'] // Cambiar por tu dominio en producción
+    origin: process.env.NODE_ENV === 'production'
+        ? corsOrigins
         : '*', // En desarrollo, permitir cualquier origen
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

@@ -89,12 +89,12 @@ class UserController {
             let countParams;
 
             if (search) {
-                query = 'SELECT id, nombre, email, telefono, created_at FROM users WHERE nombre LIKE ? LIMIT ? OFFSET ?';
+                query = 'SELECT id, nombre, email, telefono, rol, created_at FROM users WHERE nombre LIKE ? LIMIT ? OFFSET ?';
                 queryParams = [`%${search}%`, limit, offset];
                 countQuery = 'SELECT COUNT(id) as total FROM users WHERE nombre LIKE ?';
                 countParams = [`%${search}%`];
             } else {
-                query = 'SELECT id, nombre, email, telefono, created_at FROM users LIMIT ? OFFSET ?';
+                query = 'SELECT id, nombre, email, telefono, rol, created_at FROM users LIMIT ? OFFSET ?';
                 queryParams = [limit, offset];
                 countQuery = 'SELECT COUNT(id) as total FROM users';
                 countParams = [];

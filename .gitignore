@@ -5,11 +5,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # Variables de entorno (contiene información sensible)
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# .env (comentado para incluir en respaldo personal)
+# .env
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
 
 # Logs
 logs

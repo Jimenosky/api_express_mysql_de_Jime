@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
+    "migrate:mysql-to-supabase": "node scripts/migrate_mysql_to_supabase.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -19,9 +20,10 @@
     "express": "^5.1.0",
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.6.0"
+    "pg": "^8.11.3"
   },
   "devDependencies": {
+    "mysql2": "^3.6.0",
     "nodemon": "^3.0.1"
   }
 }

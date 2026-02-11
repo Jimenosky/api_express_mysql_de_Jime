@@ -3,7 +3,7 @@
  * @description Maneja todas las operaciones CRUD para la entidad Usuario
  */
 
-const { pool } = require('../config/database');
+const { pool, query } = require('../config/database');
 
 /**
  * Clase que representa el modelo de Usuario
@@ -37,10 +37,10 @@ class User {
      */
     static async findAll() {
         try {
-            const [rows] = await pool.execute(
+            const result = await query(
                 'SELECT id, nombre, email, telefono, created_at, updated_at FROM users ORDER BY created_at DESC'
             );
-            return rows;
+            return result.rows;
         } catch (error) {
             console.error('Error en User.findAll:', error);
             throw new Error('Error al obtener usuarios');
@@ -54,11 +54,11 @@ class User {
      */
     static async findById(id) {
         try {
-            const [rows] = await pool.execute(
-                'SELECT id, nombre, email, telefono, created_at, updated_at FROM users WHERE id = ?',
+            const result = await query(
+                'SELECT id, nombre, email, telefono, created_at, updated_at FROM users WHERE id = $1',
                 [id]
             );
-            return rows.length > 0 ? rows[0] : null;
+            return result.rows.length > 0 ? result.rows[0] : null;
         } catch (error) {
             console.error('Error en User.findById:', error);
             throw new Error('Error al buscar usuario por ID');
@@ -75,11 +75,11 @@ class User {
             // Normalizar email a minúsculas para búsqueda case-insensitive
             const normalizedEmail = email.toLowerCase().trim();
             
-            const [rows] = await pool.execute(
-                'SELECT id, nombre, email, telefono, created_at, updated_at FROM users WHERE LOWER(email) = ?',
+            const result = await query(
+                'SELECT id, nombre, email, telefono, created_at, updated_at FROM users WHERE LOWER(email) = $1',
                 [normalizedEmail]
             );
-            return rows.length > 0 ? rows[0] : null;
+            return result.rows.length > 0 ? result.rows[0] : null;
         } catch (error) {
             console.error('Error en User.findByEmail:', error);
             throw new Error('Error al buscar usuario por email');
@@ -99,20 +99,20 @@ class User {
         try {
             const { nombre, email, telefono, password } = userData;
             
-            const [result] = await pool.execute(
-                'INSERT INTO users (nombre, email, telefono, password) VALUES (?, ?, ?, ?)',
+            const result = await query(
+                'INSERT INTO users (nombre, email, telefono, password) VALUES ($1, $2, $3, $4) RETURNING id',
                 [nombre, email, telefono, password]
             );
 
             // Obtener el usuario recién creado (sin contraseña)
-            const newUser = await this.findById(result.insertId);
+            const newUser = await this.findById(result.rows[0].id);
             if (newUser) {
                 delete newUser.password; // No devolver la contraseña
             }
             return newUser;
         } catch (error) {
             console.error('Error en User.create:', error);
-            if (error.code === 'ER_DUP_ENTRY') {
+            if (error.code === '23505') { // Código de error de PostgreSQL para unique violation
                 throw new Error('El email ya está registrado');
             }
             throw new Error('Error al crear usuario');
@@ -129,21 +129,21 @@ class User {
         try {
             const { nombre, email, telefono, password } = userData;
             
-            let query = 'UPDATE users SET nombre = ?, email = ?, telefono = ?';
+            let queryText = 'UPDATE users SET nombre = $1, email = $2, telefono = $3';
             let params = [nombre, email, telefono];
             
             // Si se proporciona una nueva contraseña, incluirla en la actualización
             if (password) {
-                query += ', password = ?';
-                params.push(password);
+                queryText += ', password = $4 WHERE id = $5';
+                params.push(password, id);
+            } else {
+                queryText += ' WHERE id = $4';
+                params.push(id);
             }
             
-            query += ' WHERE id = ?';
-            params.push(id);
-            
-            const [result] = await pool.execute(query, params);
+            const result = await query(queryText, params);
 
-            if (result.affectedRows === 0) {
+            if (result.rowCount === 0) {
                 return null;
             }
 
@@ -155,7 +155,7 @@ class User {
             return updatedUser;
         } catch (error) {
             console.error('Error en User.update:', error);
-            if (error.code === 'ER_DUP_ENTRY') {
+            if (error.code === '23505') {
                 throw new Error('El email ya está registrado');
             }
             throw new Error('Error al actualizar usuario');
@@ -172,11 +172,11 @@ class User {
             // Normalizar email a minúsculas para búsqueda case-insensitive
             const normalizedEmail = email.toLowerCase().trim();
             
-            const [rows] = await pool.execute(
-                'SELECT * FROM users WHERE LOWER(email) = ?',
+            const result = await query(
+                'SELECT * FROM users WHERE LOWER(email) = $1',
                 [normalizedEmail]
             );
-            return rows.length > 0 ? rows[0] : null;
+            return result.rows.length > 0 ? result.rows[0] : null;
         } catch (error) {
             console.error('Error en User.findByEmailWithPassword:', error);
             throw new Error('Error al buscar usuario por email: ' + error.message);
@@ -190,11 +190,11 @@ class User {
      */
     static async delete(id) {
         try {
-            const [result] = await pool.execute(
-                'DELETE FROM users WHERE id = ?',
+            const result = await query(
+                'DELETE FROM users WHERE id = $1',
                 [id]
             );
-            return result.affectedRows > 0;
+            return result.rowCount > 0;
         } catch (error) {
             console.error('Error en User.delete:', error);
             throw new Error('Error al eliminar usuario');
@@ -208,11 +208,11 @@ class User {
      */
     static async searchByName(nombre) {
         try {
-            const [rows] = await pool.execute(
-                'SELECT id, nombre, email, telefono, created_at, updated_at FROM users WHERE nombre LIKE ? ORDER BY nombre',
+            const result = await query(
+                'SELECT id, nombre, email, telefono, created_at, updated_at FROM users WHERE nombre ILIKE $1 ORDER BY nombre',
                 [`%${nombre}%`]
             );
-            return rows;
+            return result.rows;
         } catch (error) {
             console.error('Error en User.searchByName:', error);
             throw new Error('Error al buscar usuarios por nombre');
@@ -225,8 +225,8 @@ class User {
      */
     static async count() {
         try {
-            const [rows] = await pool.execute('SELECT COUNT(*) as total FROM users');
-            return rows[0].total;
+            const result = await query('SELECT COUNT(*) as total FROM users');
+            return parseInt(result.rows[0].total);
         } catch (error) {
             console.error('Error en User.count:', error);
             throw new Error('Error al contar usuarios');
@@ -253,8 +253,9 @@ class User {
             const offset = (pageInt - 1) * limitInt;
             
             // Obtener usuarios paginados
-            const [users] = await pool.execute(
-                `SELECT id, nombre, email, telefono, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT ${limitInt} OFFSET ${offset}`
+            const result = await query(
+                'SELECT id, nombre, email, telefono, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+                [limitInt, offset]
             );
 
             // Obtener total de usuarios
@@ -262,7 +263,7 @@ class User {
             const totalPages = Math.ceil(total / limitInt);
 
             return {
-                users,
+                users: result.rows,
                 pagination: {
                     currentPage: pageInt,
                     totalPages,

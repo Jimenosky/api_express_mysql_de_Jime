@@ -1,9 +1,9 @@
 /**
- * Configuración de conexión a la base de datos MySQL
- * @description Este módulo maneja la conexión a MySQL usando mysql2 con promesas
+ * Configuración de conexión a la base de datos PostgreSQL
+ * @description Este módulo maneja la conexión a PostgreSQL usando pg
  */
 
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 require('dotenv').config();
 
 /**
@@ -12,20 +12,21 @@ require('dotenv').config();
  */
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER || 'root',
+    port: process.env.DB_PORT || 5432,
+    user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'password',
-    database: process.env.DB_NAME || 'usuarios_db',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+    database: process.env.DB_NAME || 'postgres',
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
 };
 
 /**
  * Pool de conexiones a la base de datos
- * @type {mysql.Pool}
+ * @type {Pool}
  */
-const pool = mysql.createPool(dbConfig);
+const pool = new Pool(dbConfig);
 
 /**
  * Función para probar la conexión a la base de datos
@@ -33,12 +34,12 @@ const pool = mysql.createPool(dbConfig);
  */
 const testConnection = async () => {
     try {
-        const connection = await pool.getConnection();
-        console.log('✅ Conexión a MySQL establecida correctamente');
-        connection.release();
+        const client = await pool.connect();
+        console.log('✅ Conexión a PostgreSQL establecida correctamente');
+        client.release();
         return true;
     } catch (error) {
-        console.error('❌ Error al conectar con MySQL:', error.message);
+        console.error('❌ Error al conectar con PostgreSQL:', error.message);
         return false;
     }
 };
@@ -57,21 +58,16 @@ const closePool = async () => {
 };
 
 /**
- * Función para obtener una conexión del pool
- * @returns {Promise<mysql.Connection>} Conexión a la base de datos
+ * Función para ejecutar queries
+ * @param {string} text - Query SQL
+ * @param {Array} params - Parámetros de la query
+ * @returns {Promise<Object>} Resultado de la query
  */
-const getConnection = async () => {
-    try {
-        return await pool.getConnection();
-    } catch (error) {
-        console.error('❌ Error al obtener conexión del pool:', error.message);
-        throw error;
-    }
-};
+const query = (text, params) => pool.query(text, params);
 
 module.exports = {
     pool,
+    query,
     testConnection,
-    closePool,
-    getConnection
+    closePool
 };

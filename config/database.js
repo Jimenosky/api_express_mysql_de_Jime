@@ -8,20 +8,18 @@ require('dotenv').config();
 
 /**
  * Configuración de la conexión a la base de datos
+ * Usar connection string para evitar problemas de IPv6 en Render
  * @type {Object}
  */
+const connectionString = process.env.DATABASE_URL || 
+    `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'password'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'postgres'}${process.env.DB_SSL === 'true' ? '?sslmode=require' : ''}`;
+
 const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
-    database: process.env.DB_NAME || 'postgres',
+    connectionString,
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
-    // Forzar IPv4 para evitar problemas con IPv6 en Render
-    family: 4,
 };
 
 /**
